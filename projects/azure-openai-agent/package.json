@@ -1,0 +1,31 @@
+{
+  "name": "azure-openai-agent",
+  "version": "1.0.0",
+  "description": "An agent built with the @openai/agents SDK and Azure OpenAI.",
+  "main": "index.mts",
+  "type": "module",
+  "scripts": {
+    "start": "tsx index.mts"
+  },
+  "keywords": [
+    "openai",
+    "agent",
+    "azure"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@azure/core-auth": "^1.9.0",
+    "@azure/openai": "^2.0.0",
+    "@openai/agents": "^0.0.10",
+    "axios": "^1.10.0",
+    "dotenv": "^16.4.5",
+    "openai": "^5.8.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.12",
+    "tsx": "^4.9.0",
+    "typescript": "^5.4.5"
+  }
+}
