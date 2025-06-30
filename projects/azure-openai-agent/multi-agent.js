@@ -1,4 +1,4 @@
-import { Runner, setDefaultOpenAIClient } from "@openai/agents";
+import { Runner, setDefaultOpenAIClient, setTracingDisabled } from "@openai/agents";
 import { AzureOpenAI } from "openai";
 import dotenv from 'dotenv';
 
@@ -7,6 +7,7 @@ import { createCalculatorAgent } from "./agents/CalculatorAgent.js";
 import { createRouterAgent } from "./agents/RouterAgent.js";
 
 dotenv.config();
+setTracingDisabled(true);
 
 // Set a dummy key to avoid authentication errors with the OpenAI SDK
 process.env.OPENAI_API_KEY = "dummy-key";
@@ -57,6 +58,7 @@ async function main() {
     await run("What is the weather like in San Francisco?");
     await run("What is 2 + 2?");
     await run("What is the weather in London and also what is 5 * 5?");
+    await run("What is the capital of Odisha?");
 }
 
 main().catch(console.error); 
