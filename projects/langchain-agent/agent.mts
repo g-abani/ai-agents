@@ -26,6 +26,9 @@ const agent = createReactAgent({
   checkpointSaver: agentCheckpointer,
 });
 
+// Export the agent for use in other files
+export { agent };
+
 async function main() {
     // Now it's time to use!
     const agentFinalState = await agent.invoke(
@@ -47,4 +50,4 @@ async function main() {
     );
 }
 
-main(); 
+//main(); 

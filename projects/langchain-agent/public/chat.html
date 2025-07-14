@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Multi-Agent Chat</title>
+  <style>
+    body { 
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+      padding: 2em; 
+      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+      margin: 0;
+      min-height: 100vh;
+    }
+    
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      padding: 2em;
+    }
+    
+    h1 {
+      text-align: center;
+      color: #333;
+      margin-bottom: 1em;
+    }
+    
+    #chatbox { 
+      width: 100%; 
+      height: 400px; 
+      overflow-y: auto; 
+      border: 1px solid #ddd; 
+      padding: 1em; 
+      margin-bottom: 1em; 
+      background: #f9f9f9;
+      border-radius: 8px;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    
+    .message {
+      margin-bottom: 1em;
+      padding: 1em;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    
+    .user-message {
+      background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+      margin-left: 20px;
+      border-left: 4px solid #2196f3;
+    }
+    
+    .agent-message {
+      background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%);
+      margin-right: 20px;
+      line-height: 1.6;
+      border-left: 4px solid #9c27b0;
+    }
+    
+    .agent-response {
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      margin: 0.5em 0;
+    }
+    
+    .agent-response h1, .agent-response h2, .agent-response h3 {
+      color: #333;
+      margin-top: 1em;
+      margin-bottom: 0.5em;
+    }
+    
+    .agent-response ul, .agent-response ol {
+      margin: 0.5em 0;
+      padding-left: 1.5em;
+    }
+    
+    .agent-response li {
+      margin-bottom: 0.3em;
+    }
+    
+    .agent-response p {
+      margin-bottom: 0.8em;
+    }
+    
+    .agent-response code {
+      background: #f1f1f1;
+      padding: 2px 4px;
+      border-radius: 3px;
+      font-family: 'Courier New', monospace;
+    }
+    
+    .agent-response pre {
+      background: #f1f1f1;
+      padding: 1em;
+      border-radius: 5px;
+      overflow-x: auto;
+      margin: 0.5em 0;
+    }
+    
+    .input-container {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    
+    input { 
+      flex: 1;
+      padding: 0.8em; 
+      font-size: 1em; 
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      outline: none;
+    }
+    
+    input:focus {
+      border-color: #007bff;
+      box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+    }
+    
+    button { 
+      padding: 0.8em 1.5em; 
+      font-size: 1em; 
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    
+    button:hover {
+      background: #0056b3;
+    }
+    
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    
+    .loading-container {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #666;
+      font-style: italic;
+      margin: 0.5em 0;
+    }
+    
+    .loading-gif {
+      width: 20px;
+      height: 20px;
+      border: 2px solid #f3f3f3;
+      border-radius: 50%;
+      border-top: 2px solid #007bff;
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    .error {
+      color: #dc3545;
+      background: #f8d7da;
+      padding: 0.5em;
+      border-radius: 5px;
+      margin: 0.5em 0;
+    }
+    
+    .timestamp {
+      font-size: 0.8em;
+      color: #666;
+      margin-top: 0.3em;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Multi-Agent Chat</h1>
+    <div id="chatbox"></div>
+    <div class="input-container">
+      <input type="text" id="userInput" placeholder="Type a message..." />
+      <button id="sendBtn" onclick="sendMessage()">Send</button>
+    </div>
+  </div>
+
+  <script>
+    // Generate a unique session ID for this chat session
+    const sessionId = 'session-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+    
+    function formatTimestamp(timestamp) {
+      return new Date(timestamp).toLocaleTimeString();
+    }
+
+    function formatResponse(text) {
+      // Clean up the text and add proper formatting
+      let formatted = text;
+      
+      // Only add line breaks after sentences that end with a period followed by a capital letter
+      // and are longer than 50 characters (to avoid breaking short sentences)
+      formatted = formatted.replace(/(\. )([A-Z][^.]{50,})/g, '.\n\n$2');
+      
+      // Format numbered lists (only at the beginning of obvious list items)
+      formatted = formatted.replace(/(\s)(\d+\.\s[A-Z])/g, '$1\n$2');
+      
+      // Add line breaks before major sections that start with numbers and colons
+      formatted = formatted.replace(/(\s)(\d+\.\s[A-Z][^:]*:)/g, '$1\n\n$2');
+      
+      // Clean up multiple consecutive newlines
+      formatted = formatted.replace(/\n{3,}/g, '\n\n');
+      
+      // Trim whitespace
+      formatted = formatted.trim();
+      
+      return formatted;
+    }
+
+    async function sendMessage() {
+      const inputEl = document.getElementById("userInput");
+      const sendBtn = document.getElementById("sendBtn");
+      const input = inputEl.value;
+      if (!input.trim()) return;
+
+      const chatbox = document.getElementById("chatbox");
+      
+      // Add user message
+      const userMessage = document.createElement("div");
+      userMessage.className = "message user-message";
+      userMessage.innerHTML = `<b>You:</b> ${input}`;
+      chatbox.appendChild(userMessage);
+
+      // Show loading
+      const loadingEl = document.createElement("div");
+      loadingEl.className = "loading-container";
+      loadingEl.id = "loading";
+      loadingEl.innerHTML = `
+        <div class="loading-gif"></div>
+        <span>Agent is typing...</span>
+      `;
+      chatbox.appendChild(loadingEl);
+      chatbox.scrollTop = chatbox.scrollHeight;
+
+      // Disable input and button
+      inputEl.disabled = true;
+      sendBtn.disabled = true;
+
+      try {
+        const res = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+            message: input,
+            threadId: sessionId
+          })
+        });
+
+        const data = await res.json();
+
+        // Remove loading
+        document.getElementById("loading").remove();
+        
+        // Add agent response
+        const agentMessage = document.createElement("div");
+        agentMessage.className = "message agent-message";
+        agentMessage.innerHTML = `
+          <b>Agent:</b>
+          <div class="agent-response">${formatResponse(data.response)}</div>
+          <div class="timestamp">Thread: ${data.threadId.substring(0, 8)}... • ${formatTimestamp(data.timestamp)}</div>
+        `;
+        chatbox.appendChild(agentMessage);
+        
+      } catch (error) {
+        document.getElementById("loading").remove();
+        
+        const errorMessage = document.createElement("div");
+        errorMessage.className = "error";
+        errorMessage.innerHTML = `<b>Error:</b> ${error.message}`;
+        chatbox.appendChild(errorMessage);
+      }
+
+      // Re-enable input and button
+      inputEl.disabled = false;
+      sendBtn.disabled = false;
+      inputEl.value = "";
+      inputEl.focus();
+      chatbox.scrollTop = chatbox.scrollHeight;
+    }
+
+    // Send on Enter
+    document.getElementById("userInput").addEventListener("keydown", function (e) {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+
+    // Focus on input when page loads
+    document.getElementById("userInput").focus();
+  </script>
+</body>
+</html>

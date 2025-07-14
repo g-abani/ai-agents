@@ -18,10 +18,12 @@
     "@azure/core-auth": "^1.9.0",
     "@azure/openai": "^2.0.0",
     "@openai/agents": "^0.0.10",
+    "@tavily/core": "^0.5.9",
     "axios": "^1.10.0",
     "dotenv": "^16.4.5",
+    "node-fetch": "^3.3.2",
     "openai": "^5.8.0",
-    "zod": "^3.23.8"
+    "zod": "^3.25.75"
   },
   "devDependencies": {
     "@types/node": "^20.12.12",

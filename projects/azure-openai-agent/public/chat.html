@@ -1,0 +1,1237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Multi-Agent Chat</title>
+  <style>
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; 
+      padding: 2em; 
+      background: #f8fafc;
+      margin: 0;
+      min-height: 100vh;
+      line-height: 1.6;
+      color: #1a202c;
+    }
+    
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      background: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+      padding: 2em;
+      border: 1px solid #e2e8f0;
+    }
+    
+    h1 {
+      text-align: center;
+      color: #1a202c;
+      margin-bottom: 1.5em;
+      font-size: 2em;
+      font-weight: 600;
+      letter-spacing: -0.025em;
+    }
+    
+    .agent-info {
+      background: #f7fafc;
+      border-radius: 8px;
+      padding: 1.2em;
+      margin-bottom: 2em;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+    
+    .agent-info p {
+      margin: 0;
+      font-size: 0.9em;
+      color: #64748b;
+      text-align: center;
+      font-weight: 400;
+      line-height: 1.6;
+    }
+    
+    #chatbox { 
+      width: 100%; 
+      height: 500px; 
+      overflow-y: auto; 
+      border: 1px solid #e2e8f0; 
+      padding: 1.5em; 
+      margin-bottom: 1.5em; 
+      background: #fafafa;
+      border-radius: 8px;
+      font-family: inherit;
+      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
+      box-sizing: border-box;
+    }
+    
+    .message {
+      margin-bottom: 1.5em;
+      padding: 1em;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+      border: 1px solid #e5e7eb;
+      background: #ffffff;
+    }
+    
+    .user-message {
+      background: #f8fafc;
+      margin-left: 20px;
+      border-left: 3px solid #3b82f6;
+    }
+    
+    .agent-message {
+      background: #fafafa;
+      margin-right: 20px;
+      line-height: 1.6;
+      border-left: 3px solid #6b7280;
+    }
+    
+    .agent-message.math-agent {
+      background: #f7fdf7;
+      border-left: 3px solid #22c55e;
+    }
+    
+    .agent-message.weather-agent {
+      background: #f8fafc;
+      border-left: 3px solid #3b82f6;
+    }
+    
+    .agent-message.search-agent {
+      background: #fffbeb;
+      border-left: 3px solid #f59e0b;
+    }
+    
+    .agent-message.data-agent {
+      background: #fef3c7;
+      border-left: 3px solid #d97706;
+    }
+    
+    .agent-message.orchestrator {
+      background: #faf5ff;
+      border-left: 3px solid #8b5cf6;
+    }
+    
+    .agent-response {
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      margin: 0.5em 0;
+    }
+    
+    .agent-response.streaming {
+      border-right: 2px solid #007bff;
+      animation: blink 1s infinite;
+    }
+    
+    @keyframes blink {
+      0%, 50% { border-right-color: #007bff; }
+      51%, 100% { border-right-color: transparent; }
+    }
+    
+    .agent-response h1, .agent-response h2, .agent-response h3 {
+      color: #333;
+      margin-top: 1em;
+      margin-bottom: 0.5em;
+    }
+    
+    .response-header {
+      color: #2c3e50 !important;
+      margin: 0.8em 0 0.4em 0 !important;
+      padding: 0.3em 0.6em;
+      background: linear-gradient(135deg, #ecf0f1 0%, #bdc3c7 100%);
+      border-radius: 5px;
+      border-left: 4px solid #3498db;
+      font-weight: 600;
+    }
+    
+    h1.response-header {
+      font-size: 1.3em;
+      border-left-color: #e74c3c;
+    }
+    
+    h2.response-header {
+      font-size: 1.2em;
+      border-left-color: #f39c12;
+    }
+    
+    h3.response-header {
+      font-size: 1.1em;
+      border-left-color: #3498db;
+    }
+    
+    h4.response-header {
+      font-size: 1.05em;
+      border-left-color: #9b59b6;
+    }
+    
+    .agent-response ul, .agent-response ol {
+      margin: 0.5em 0;
+      padding-left: 1.5em;
+    }
+    
+    .agent-response li {
+      margin-bottom: 0.3em;
+    }
+    
+    .agent-response p {
+      margin-bottom: 0.8em;
+    }
+    
+    .agent-response code {
+      background: #f1f1f1;
+      padding: 2px 4px;
+      border-radius: 3px;
+      font-family: 'Courier New', monospace;
+    }
+    
+    .agent-response pre {
+      background: #f1f1f1;
+      padding: 1em;
+      border-radius: 5px;
+      overflow-x: auto;
+      margin: 0.5em 0;
+    }
+    
+    .math-inline {
+      font-family: 'Times New Roman', serif;
+      font-style: italic;
+      color: #2c3e50;
+      background: rgba(52, 152, 219, 0.1);
+      padding: 2px 4px;
+      border-radius: 3px;
+      font-weight: 500;
+    }
+    
+    .math-display {
+      font-family: 'Times New Roman', serif;
+      font-style: italic;
+      color: #2c3e50;
+      background: rgba(52, 152, 219, 0.1);
+      padding: 1em;
+      border-radius: 5px;
+      text-align: center;
+      margin: 0.5em 0;
+      border-left: 4px solid #3498db;
+      font-size: 1.1em;
+      font-weight: 500;
+    }
+    
+    .math-expressions {
+      background: rgba(34, 197, 94, 0.15);
+      color: #15803d;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 600;
+      font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+      display: inline;
+      white-space: nowrap;
+    }
+    
+    .math-statement {
+      background: rgba(139, 92, 246, 0.15);
+      color: #7c3aed;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-weight: 500;
+      display: inline;
+      line-height: 1.6;
+    }
+    
+
+    
+    .weather-label {
+      font-weight: 600;
+      color: #1f2937;
+      margin-right: 0.5em;
+    }
+    
+    .weather-value {
+      color: #374151;
+      font-weight: 500;
+    }
+    
+    .weather-header {
+      font-weight: 600;
+      color: #1e40af;
+      background: #f0f9ff;
+      padding: 0.75em 1em;
+      border-radius: 6px;
+      border-left: 3px solid #3b82f6;
+      margin: 1em 0;
+      border: 1px solid #e0f2fe;
+      font-size: 1em;
+    }
+    
+    .weather-item {
+      padding: 0.5em 1em;
+      margin: 0.5em 0;
+      background: #f8fafc;
+      border-radius: 6px;
+      border-left: 2px solid #94a3b8;
+      border: 1px solid #e2e8f0;
+    }
+    
+    .list-number {
+      font-weight: bold;
+      color: #e67e22;
+    }
+    
+    .list-bullet {
+      font-weight: bold;
+      color: #8e44ad;
+    }
+    
+    .agent-section {
+      margin: 1.5em 0;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      border: 1px solid #e2e8f0;
+      background: #ffffff;
+    }
+    
+    .agent-attribution {
+      color: #374151;
+      padding: 0.75em 1.2em;
+      font-size: 0.8em;
+      font-weight: 600;
+      letter-spacing: 0.025em;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      gap: 0.5em;
+      background: #f8fafc;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    
+    .section-content {
+      padding: 1.5em;
+      background: #ffffff;
+      line-height: 1.6;
+      font-size: 1em;
+      color: #374151;
+    }
+    
+    /* Weather Agent Styling */
+    .agent-section.weather-agent .agent-attribution {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+    
+    .agent-section.weather-agent .section-content {
+      border-left: 3px solid #3b82f6;
+    }
+    
+    /* Math Agent Styling */
+    .agent-section.math-agent .agent-attribution {
+      background: #dcfce7;
+      color: #15803d;
+    }
+    
+    .agent-section.math-agent .section-content {
+      border-left: 3px solid #22c55e;
+    }
+    
+    /* Search Agent Styling */
+    .agent-section.search-agent .agent-attribution {
+      background: #fef3c7;
+      color: #d97706;
+    }
+    
+    .agent-section.search-agent .section-content {
+      border-left: 3px solid #f59e0b;
+    }
+    
+    /* Data Agent Styling */
+    .agent-section.data-agent .agent-attribution {
+      background: #fef3c7;
+      color: #d97706;
+    }
+    
+    .agent-section.data-agent .section-content {
+      border-left: 3px solid #d97706;
+    }
+    
+    .input-container {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+      padding: 1em;
+      background: #ffffff;
+      border-radius: 8px;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+      margin-bottom: 1.5em;
+    }
+    
+    .stream-toggle {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.9em;
+      color: #6b7280;
+      cursor: pointer;
+      white-space: nowrap;
+      padding: 0.5em 0.75em;
+      border-radius: 6px;
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      transition: all 0.2s ease;
+      font-weight: 400;
+    }
+    
+    .stream-toggle input[type="checkbox"] {
+      margin: 0;
+      cursor: pointer;
+    }
+    
+    .stream-toggle:hover {
+      color: #374151;
+      background: #f3f4f6;
+      border-color: #d1d5db;
+    }
+    
+    input { 
+      flex: 1;
+      padding: 0.75em 1em; 
+      font-size: 1em; 
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      outline: none;
+      background: #ffffff;
+      transition: all 0.2s ease;
+      font-family: inherit;
+      color: #374151;
+    }
+    
+    input:focus {
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+      background: #ffffff;
+    }
+    
+    button { 
+      padding: 0.75em 1.5em; 
+      font-size: 1em; 
+      background: #3b82f6;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-weight: 500;
+      font-family: inherit;
+    }
+    
+    button:hover {
+      background: #2563eb;
+    }
+    
+    button:disabled {
+      background: #9ca3af;
+      cursor: not-allowed;
+    }
+    
+    .loading-container {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #666;
+      font-style: italic;
+      margin: 0.5em 0;
+    }
+    
+    .loading-gif {
+      width: 20px;
+      height: 20px;
+      border: 2px solid #f3f3f3;
+      border-radius: 50%;
+      border-top: 2px solid #007bff;
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    @keyframes fadeInUp {
+      0% { 
+        opacity: 0; 
+        transform: translateY(10px); 
+      }
+      100% { 
+        opacity: 1; 
+        transform: translateY(0); 
+      }
+    }
+    
+    .container {
+      animation: fadeInUp 0.3s ease-out;
+    }
+    
+    .agent-section {
+      animation: fadeInUp 0.2s ease-out;
+    }
+    
+    .message {
+      animation: fadeInUp 0.2s ease-out;
+    }
+    
+    .agent-message.error {
+      background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);
+      border-left: 4px solid #f44336;
+      color: #c62828;
+    }
+    
+    .timestamp {
+      font-size: 0.8em;
+      color: #666;
+      margin-top: 0.3em;
+    }
+
+    /* Approval UI Styles */
+    .approval-container {
+      background: #fff3cd;
+      border: 1px solid #ffeaa7;
+      border-radius: 8px;
+      padding: 1.5em;
+      margin-bottom: 1.5em;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      display: none;
+    }
+
+    .approval-container.active {
+      display: block;
+    }
+
+    .approval-header {
+      color: #d97706;
+      font-weight: 600;
+      margin-bottom: 1em;
+      font-size: 1.1em;
+      display: flex;
+      align-items: center;
+      gap: 0.5em;
+    }
+
+    .approval-item {
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      padding: 1.2em;
+      margin-bottom: 1em;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+
+    .approval-item:last-child {
+      margin-bottom: 0;
+    }
+
+    .approval-details {
+      margin-bottom: 1em;
+    }
+
+    .approval-agent {
+      font-weight: 600;
+      color: #374151;
+      margin-bottom: 0.5em;
+    }
+
+    .approval-tool {
+      color: #1f2937;
+      font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+      background: #f3f4f6;
+      padding: 0.3em 0.6em;
+      border-radius: 4px;
+      font-size: 0.9em;
+      display: inline-block;
+      margin-bottom: 0.5em;
+    }
+
+    .approval-arguments {
+      background: #f8f9fa;
+      border: 1px solid #e9ecef;
+      border-radius: 4px;
+      padding: 0.8em;
+      font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+      font-size: 0.85em;
+      color: #495057;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+
+    .approval-actions {
+      display: flex;
+      gap: 0.75em;
+      margin-top: 1em;
+    }
+
+    .approval-btn {
+      padding: 0.6em 1.2em;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.9em;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-family: inherit;
+    }
+
+    .approval-btn.approve {
+      background: #10b981;
+      color: white;
+    }
+
+    .approval-btn.approve:hover {
+      background: #059669;
+    }
+
+    .approval-btn.reject {
+      background: #ef4444;
+      color: white;
+    }
+
+    .approval-btn.reject:hover {
+      background: #dc2626;
+    }
+
+    .approval-btn:disabled {
+      background: #9ca3af;
+      cursor: not-allowed;
+    }
+
+    .approval-timestamp {
+      font-size: 0.75em;
+      color: #6b7280;
+      margin-top: 0.5em;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Multi-Agent Chat System</h1>
+    <div class="agent-info">
+      <p>🔢 <strong>MathAgent</strong> - Calculations | 🌤️ <strong>WeatherAgent</strong> - Weather Info | 🔍 <strong>SearchAgent</strong> - Web Search | 🔐 <strong>DataAgent</strong> - Sensitive Data (Approval Required) | 🧭 <strong>Orchestrator</strong> - Routes Queries</p>
+    </div>
+    <div id="chatbox"></div>
+    
+    <!-- Approval UI Container -->
+    <div id="approvalContainer" class="approval-container">
+      <div class="approval-header">
+        🔐 Human Approval Required
+      </div>
+      <div id="approvalItems"></div>
+    </div>
+    
+    <div class="input-container">
+      <input type="text" id="userInput" placeholder="Ask me about math, weather, or search for information..." />
+      <label class="stream-toggle">
+        <input type="checkbox" id="streamToggle" />
+        <span>🔄 Streaming</span>
+      </label>
+      <button id="sendBtn" onclick="sendMessage()">Send</button>
+    </div>
+  </div>
+
+  <script>
+    // Generate a unique session ID for this chat session
+    const sessionId = 'session-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+    
+    function formatTimestamp(timestamp) {
+      return new Date(timestamp).toLocaleTimeString();
+    }
+    
+    function getAgentClass(agentName) {
+      switch (agentName.toLowerCase()) {
+        case 'mathagent':
+          return 'math-agent';
+        case 'weatheragent':
+          return 'weather-agent';
+        case 'searchagent':
+          return 'search-agent';
+        case 'dataagent':
+          return 'data-agent';
+        case 'orchestrator':
+          return 'orchestrator';
+        default:
+          return 'orchestrator';
+      }
+    }
+    
+    function getAgentEmoji(agentName) {
+      switch (agentName.toLowerCase()) {
+        case 'mathagent':
+          return '🔢';
+        case 'weatheragent':
+          return '🌤️';
+        case 'searchagent':
+          return '🔍';
+        case 'dataagent':
+          return '🔐';
+        case 'orchestrator':
+          return '🧭';
+        default:
+          return '🤖';
+      }
+    }
+
+    function formatResponse(text) {
+      // Clean up the text and add proper formatting
+      let formatted = text;
+      
+      // Handle markdown headers first
+      formatted = formatted.replace(/^#### (.+)$/gm, '<h4 class="response-header">$1</h4>');
+      formatted = formatted.replace(/^### (.+)$/gm, '<h3 class="response-header">$1</h3>');
+      formatted = formatted.replace(/^## (.+)$/gm, '<h2 class="response-header">$1</h2>');
+      formatted = formatted.replace(/^# (.+)$/gm, '<h1 class="response-header">$1</h1>');
+      
+      // Handle markdown bold and italic
+      formatted = formatted.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+      formatted = formatted.replace(/\*(.+?)\*/g, '<em>$1</em>');
+      
+      // Clean up line breaks - remove single line breaks within sentences
+      formatted = formatted.replace(/([^.\n])\n([a-z])/g, '$1 $2');
+      
+      // Keep intentional paragraph breaks (double line breaks)
+      formatted = formatted.replace(/\n\n/g, '||PARAGRAPH||');
+      
+      // Remove remaining single line breaks
+      formatted = formatted.replace(/\n/g, ' ');
+      
+      // Restore paragraph breaks
+      formatted = formatted.replace(/\|\|PARAGRAPH\|\|/g, '\n\n');
+      
+      // Add proper spacing after headers
+      formatted = formatted.replace(/(<\/h[1-3]>)(\w)/g, '$1\n\n$2');
+      
+      // Add agent attribution based on content
+      formatted = addAgentAttribution(formatted);
+      
+      // Apply math highlighting AFTER agent attribution to avoid HTML interference
+      formatted = applyMathHighlighting(formatted);
+      
+      // Format weather data with proper structure
+      formatted = formatted.replace(/Weather in ([^:]+):\s*-\s*/g, '<div class="weather-header">🌤️ Weather in $1:</div>');
+      formatted = formatted.replace(/(Temperature|Condition|Humidity|Wind Speed):\s*([^-\n]+?)(?:\s*-\s*|\s*$)/g, 
+        '<div class="weather-item"><span class="weather-label">$1:</span> <span class="weather-value">$2</span></div>');
+      
+      // Format numbered lists with proper spacing
+      formatted = formatted.replace(/(\n|^)(\d+\.\s)/g, '$1<span class="list-number">$2</span>');
+      
+      // Format bullet points (including dashes)
+      formatted = formatted.replace(/(\s|^)(-\s)([A-Z][^:]*:)/g, '$1<span class="list-bullet">•</span> <strong>$3</strong>');
+      formatted = formatted.replace(/(\n|^)([-•*]\s)/g, '$1<span class="list-bullet">$2</span>');
+      
+      // Add line breaks before major sections that start with numbers and colons
+      formatted = formatted.replace(/(\s)(\d+\.\s[A-Z][^:]*:)/g, '$1\n\n$2');
+      
+      // Clean up multiple consecutive newlines
+      formatted = formatted.replace(/\n{3,}/g, '\n\n');
+      
+      // Fix spacing around headers
+      formatted = formatted.replace(/\n\n(<h[1-3])/g, '\n$1');
+      formatted = formatted.replace(/(<\/h[1-3]>)\n\n\n/g, '$1\n\n');
+      
+      // Trim whitespace
+      formatted = formatted.trim();
+      
+      return formatted;
+    }
+    
+    function applyMathHighlighting(text) {
+      let formatted = text;
+      
+      // Handle LaTeX-style math expressions first
+      formatted = formatted.replace(/\\\(([^)]+)\\\)/g, '<span class="math-inline">$1</span>');
+      formatted = formatted.replace(/\\\[([^\]]+)\\\]/g, '<div class="math-display">$1</div>');
+      
+      // Handle complete mathematical statements FIRST (to avoid fragmentation)
+      // Pattern for complete calculation sentences like "The calculation for 45 times 878 - 96 results in 39510 - 96 = 39414"
+      formatted = formatted.replace(/(The\s+calculation\s+(?:for|of)\s+[^.]+\.)/gi, '<span class="math-statement">$1</span>');
+      formatted = formatted.replace(/((?:Calculating|Now calculating)[^.]+\.)/gi, '<span class="math-statement">$1</span>');
+      formatted = formatted.replace(/((?:The result is|The result of|Result:)[^.]+\.)/gi, '<span class="math-statement">$1</span>');
+      formatted = formatted.replace(/(The\s+(?:product|sum|difference|quotient)\s+of[^.]+\.)/gi, '<span class="math-statement">$1</span>');
+      
+      // Only apply individual math expression highlighting if NOT already within a math-statement
+      // Use a more careful approach that checks for existing spans
+      formatted = highlightIndividualMathExpressions(formatted);
+      
+      return formatted;
+    }
+    
+    function highlightIndividualMathExpressions(text) {
+      // Split by existing math-statement spans to avoid double-highlighting
+      let parts = text.split(/(<span class="math-statement">.*?<\/span>)/gi);
+      
+      for (let i = 0; i < parts.length; i++) {
+        // Only process parts that are NOT already math-statement spans
+        if (!parts[i].includes('class="math-statement"')) {
+          // 1. Complete equations: 45 * 878 = 39,510
+          parts[i] = parts[i].replace(/(\b\d+(?:,\d{3})*(?:\.\d+)?\s*[×*÷/+\-]\s*\d+(?:,\d{3})*(?:\.\d+)?\s*=\s*\d+(?:,\d{3})*(?:\.\d+)?)/g, '<span class="math-expression">$1</span>');
+          
+          // 2. Intermediate calculations: 45 * 878 - 96
+          parts[i] = parts[i].replace(/(\b\d+(?:,\d{3})*(?:\.\d+)?\s*[×*÷/+\-]\s*\d+(?:,\d{3})*(?:\.\d+)?\s*[×*÷/+\-]\s*\d+(?:,\d{3})*(?:\.\d+)?(?!\s*[=<>]))/g, '<span class="math-expression">$1</span>');
+          
+          // 3. Simple operations: 45 * 878 or 510 - 96
+          parts[i] = parts[i].replace(/(\b\d+(?:,\d{3})*(?:\.\d+)?\s*[×*÷/+\-]\s*\d+(?:,\d{3})*(?:\.\d+)?)(?!\s*[=<>\-*+\/×÷])/g, '<span class="math-expression">$1</span>');
+          
+          // 4. Standalone results: = 39,414
+          parts[i] = parts[i].replace(/(\s=\s+\d+(?:,\d{3})*(?:\.\d+)?)/g, '<span class="math-expression">$1</span>');
+        }
+      }
+      
+      return parts.join('');
+    }
+    
+    function addAgentAttribution(text) {
+      // Split text into meaningful sections based on clear patterns
+      let sections = [];
+      
+      // First, check if this is a multi-agent response
+      const hasWeather = /weather|temperature|humidity|wind speed|condition/i.test(text);
+      const hasMath = /calculation|calculate|\d+\s*[×*÷/+\-]\s*\d+|equals|result|math/i.test(text);
+      const hasSearch = /about|background|history|known for|capital|located|famous|silicon valley|hub|landmarks|culture|city/i.test(text);
+      
+      if ((hasWeather && hasMath) || (hasWeather && hasSearch) || (hasMath && hasSearch)) {
+        // This is a multi-agent response, split it intelligently
+        return splitMultiAgentResponse(text);
+      }
+      
+      // Single agent response - determine which agent
+      let agentInfo = getSingleAgentForContent(text);
+      if (agentInfo) {
+        let agentClass = agentInfo.name.toLowerCase().replace('agent', '-agent');
+        return `<div class="agent-section ${agentClass}">
+          <div class="agent-attribution">${agentInfo.emoji} <strong>${agentInfo.name}</strong></div>
+          <div class="section-content">${text}</div>
+        </div>`;
+      }
+      
+      return text;
+    }
+    
+    function splitMultiAgentResponse(text) {
+      let sections = [];
+      let lines = text.split('\n');
+      let currentSection = '';
+      let currentAgent = null;
+      
+      for (let i = 0; i < lines.length; i++) {
+        let line = lines[i].trim();
+        
+        // Check if this line indicates a new agent section
+        let newAgent = getAgentForLine(line);
+        
+        // Only switch agents if:
+        // 1. We found a new agent AND
+        // 2. It's different from current agent AND
+        // 3. The current section already has substantial content OR this is a clear section boundary
+        if (newAgent && newAgent !== currentAgent && shouldSwitchAgent(currentSection, line, newAgent, currentAgent)) {
+          // Save previous section if exists
+          if (currentSection.trim() && currentAgent) {
+            sections.push({
+              content: currentSection.trim(),
+              agent: currentAgent
+            });
+          }
+          
+          // Start new section
+          currentSection = lines[i];
+          currentAgent = newAgent;
+        } else {
+          // If we detected an agent but decided not to switch, still set current agent if none set
+          if (!currentAgent && newAgent) {
+            currentAgent = newAgent;
+          }
+          currentSection += (currentSection ? '\n' : '') + lines[i];
+        }
+      }
+      
+      // Add the last section
+      if (currentSection.trim() && currentAgent) {
+        sections.push({
+          content: currentSection.trim(),
+          agent: currentAgent
+        });
+      }
+      
+      // Convert sections to HTML
+      let html = sections.map(section => {
+        let agentClass = section.agent.name.toLowerCase().replace('agent', '-agent');
+        return `<div class="agent-section ${agentClass}">
+          <div class="agent-attribution">${section.agent.emoji} <strong>${section.agent.name}</strong></div>
+          <div class="section-content">${section.content}</div>
+        </div>`;
+      }).join('\n\n');
+      
+      return html || text;
+    }
+    
+    function shouldSwitchAgent(currentSection, line, newAgent, currentAgent) {
+      // If no current agent, always switch
+      if (!currentAgent) return true;
+      
+      // If agents are the same, don't switch
+      if (newAgent.name === currentAgent.name) return false;
+      
+      // Clear indicators for switching agents
+      const clearSwitchIndicators = [
+        /^(current weather|weather in)/i,  // Clear weather start
+        /^(more about|about|background)/i, // Clear search start
+        /^(now,?\s+calculating|the result of|calculating)/i // Clear calculation start
+      ];
+      
+      // Check if this line clearly indicates a new section
+      for (let indicator of clearSwitchIndicators) {
+        if (indicator.test(line.trim())) {
+          return true;
+        }
+      }
+      
+      // If current section has substantial content (more than 50 characters), allow switch
+      if (currentSection.trim().length > 50) {
+        return true;
+      }
+      
+      // Otherwise, don't switch - keep content together
+      return false;
+    }
+    
+    function getAgentForLine(line) {
+      // Weather indicators
+      if (/current weather|weather in|temperature|humidity|wind speed|condition.*°C/i.test(line)) {
+        return { name: 'WeatherAgent', emoji: '🌤️' };
+      }
+      
+      // Math indicators  
+      if (/calculation|calculating|calculate|\d+\s*[×*÷/+\-]\s*\d+|equals|result is|math/i.test(line)) {
+        return { name: 'MathAgent', emoji: '🔢' };
+      }
+      
+      // Search indicators
+      if (/about|background|more about|history|known for|capital|located|famous|silicon valley|hub|landmarks|culture|city/i.test(line)) {
+        return { name: 'SearchAgent', emoji: '🔍' };
+      }
+      
+      return null;
+    }
+    
+    function getSingleAgentForContent(text) {
+      // Check for weather content
+      if (/weather|temperature|humidity|wind speed|condition.*°C/i.test(text)) {
+        return { name: 'WeatherAgent', emoji: '🌤️' };
+      }
+      
+      // Check for math content
+      if (/calculation|calculate|\d+\s*[×*÷/+\-]\s*\d+|equals|result|math/i.test(text)) {
+        return { name: 'MathAgent', emoji: '🔢' };
+      }
+      
+      // Check for search content
+      if (/about|background|history|known for|capital|located|famous|silicon valley|hub|landmarks|culture|city/i.test(text)) {
+        return { name: 'SearchAgent', emoji: '🔍' };
+      }
+      
+      // Check for data operations
+      if (/sensitive|data|access|user.*data|personal|financial|medical|delete.*data|confidential|privacy/i.test(text)) {
+        return { name: 'DataAgent', emoji: '🔐' };
+      }
+      
+      return null;
+    }
+
+    // Approval handling functions
+    function showApprovalRequests(approvals) {
+      const approvalContainer = document.getElementById('approvalContainer');
+      const approvalItems = document.getElementById('approvalItems');
+      
+      approvalItems.innerHTML = '';
+      
+      approvals.forEach(approval => {
+        const approvalItem = document.createElement('div');
+        approvalItem.className = 'approval-item';
+        approvalItem.innerHTML = `
+          <div class="approval-details">
+            <div class="approval-agent">${getAgentEmoji(approval.agent)} ${approval.agent}</div>
+            <div class="approval-tool">Tool: ${approval.toolName}</div>
+            <div class="approval-arguments">${JSON.stringify(approval.arguments, null, 2)}</div>
+            <div class="approval-timestamp">Requested: ${formatTimestamp(approval.timestamp)}</div>
+          </div>
+          <div class="approval-actions">
+            <button class="approval-btn approve" onclick="handleApproval('${approval.id}', true)">
+              ✅ Approve
+            </button>
+            <button class="approval-btn reject" onclick="handleApproval('${approval.id}', false)">
+              ❌ Reject
+            </button>
+          </div>
+        `;
+        approvalItems.appendChild(approvalItem);
+      });
+      
+      approvalContainer.classList.add('active');
+    }
+
+    function hideApprovalRequests() {
+      const approvalContainer = document.getElementById('approvalContainer');
+      approvalContainer.classList.remove('active');
+    }
+
+    async function handleApproval(approvalId, approved) {
+      try {
+        // Disable all approval buttons
+        const approvalButtons = document.querySelectorAll('.approval-btn');
+        approvalButtons.forEach(btn => btn.disabled = true);
+        
+        const response = await fetch('/api/approve', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessionId: sessionId,
+            approvalId: approvalId,
+            approved: approved
+          })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          // Check if there are remaining approvals
+          if (data.remainingApprovals && data.remainingApprovals.length > 0) {
+            showApprovalRequests(data.remainingApprovals);
+          } else {
+            // All approvals processed, hide the container
+            hideApprovalRequests();
+            
+            // Show the final response if available
+            if (data.response) {
+              const chatbox = document.getElementById('chatbox');
+              const agentMessage = document.createElement('div');
+              agentMessage.className = `message agent-message ${getAgentClass(data.agent)}`;
+              agentMessage.innerHTML = `
+                <b>${getAgentEmoji(data.agent)} ${data.agent}:</b>
+                <div class="agent-response">${formatResponse(data.response)}</div>
+                <div class="timestamp">Session: ${data.sessionId.substring(0, 8)}... • Agent: ${data.agent} • Messages: ${data.conversationLength} • ${formatTimestamp(new Date())}</div>
+              `;
+              chatbox.appendChild(agentMessage);
+              chatbox.scrollTop = chatbox.scrollHeight;
+            }
+          }
+        } else {
+          console.error('Approval failed:', data.error);
+          alert('Approval failed: ' + data.error);
+          // Re-enable buttons on error
+          approvalButtons.forEach(btn => btn.disabled = false);
+        }
+      } catch (error) {
+        console.error('Error handling approval:', error);
+        alert('Error handling approval: ' + error.message);
+        // Re-enable buttons on error
+        const approvalButtons = document.querySelectorAll('.approval-btn');
+        approvalButtons.forEach(btn => btn.disabled = false);
+      }
+    }
+
+    async function sendMessage() {
+      const inputEl = document.getElementById("userInput");
+      const sendBtn = document.getElementById("sendBtn");
+      const input = inputEl.value;
+      if (!input.trim()) return;
+
+      const chatbox = document.getElementById("chatbox");
+      
+      // Add user message
+      const userMessage = document.createElement("div");
+      userMessage.className = "message user-message";
+      userMessage.innerHTML = `<b>You:</b> ${input}`;
+      chatbox.appendChild(userMessage);
+
+      // Show loading
+      const loadingEl = document.createElement("div");
+      loadingEl.className = "loading-container";
+      loadingEl.id = "loading";
+      loadingEl.innerHTML = `
+        <div class="loading-gif"></div>
+        <span>Agent is typing...</span>
+      `;
+      chatbox.appendChild(loadingEl);
+      chatbox.scrollTop = chatbox.scrollHeight;
+
+      // Disable input and button
+      inputEl.disabled = true;
+      sendBtn.disabled = true;
+
+      // Check if streaming is enabled
+      const isStreaming = document.getElementById("streamToggle").checked;
+
+      try {
+        const res = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+            message: input,
+            sessionId: sessionId,
+            stream: isStreaming
+          })
+        });
+
+        if (isStreaming) {
+          // Handle streaming response
+          const reader = res.body.getReader();
+          let streamedText = '';
+          let currentAgent = 'Orchestrator';
+          let agentMessage = null;
+          
+          // Remove loading
+          document.getElementById("loading").remove();
+          
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            
+            const chunk = new TextDecoder().decode(value);
+            const lines = chunk.split('\n');
+            
+            for (const line of lines) {
+              if (line.startsWith('event:')) {
+                const eventType = line.substring(6).trim();
+                continue;
+              }
+              
+              if (line.startsWith('data:')) {
+                try {
+                  const data = JSON.parse(line.substring(5).trim());
+                  
+                  if (data.agent && data.agent !== currentAgent) {
+                    currentAgent = data.agent;
+                    // Create new agent message container
+                    agentMessage = document.createElement("div");
+                    agentMessage.className = `message agent-message ${getAgentClass(currentAgent)}`;
+                    agentMessage.innerHTML = `
+                      <b>${getAgentEmoji(currentAgent)} ${currentAgent}:</b>
+                      <div class="agent-response streaming"></div>
+                      <div class="timestamp">Session: ${sessionId.substring(0, 8)}... • Agent: ${currentAgent} • 🔄 Streaming... • ${formatTimestamp(new Date())}</div>
+                    `;
+                    chatbox.appendChild(agentMessage);
+                  }
+                  
+                  if (data.delta) {
+                    streamedText += data.delta;
+                    if (agentMessage) {
+                      const responseDiv = agentMessage.querySelector('.agent-response');
+                      responseDiv.innerHTML = formatResponse(streamedText);
+                    }
+                  }
+                  
+                  if (data.finalAgent) {
+                    // Update final timestamp
+                    if (agentMessage) {
+                      const timestampDiv = agentMessage.querySelector('.timestamp');
+                      timestampDiv.textContent = `Session: ${sessionId.substring(0, 8)}... • Agent: ${data.finalAgent} • Messages: ${data.conversationLength} • ${formatTimestamp(new Date())}`;
+                    }
+                  }
+                } catch (e) {
+                  // Skip invalid JSON
+                }
+              }
+            }
+          }
+        } else {
+          // Handle regular response
+          const data = await res.json();
+
+          // Remove loading
+          document.getElementById("loading").remove();
+          
+          if (data.success) {
+            // Handle approval requests
+            if (data.needsApproval && data.pendingApprovals) {
+              showApprovalRequests(data.pendingApprovals);
+              
+              // Add a message indicating approval is needed
+              const approvalMessage = document.createElement("div");
+              approvalMessage.className = "message agent-message orchestrator";
+              approvalMessage.innerHTML = `
+                <b>🔐 Approval Required:</b>
+                <div class="agent-response">${data.message}</div>
+                <div class="timestamp">Session: ${data.sessionId.substring(0, 8)}... • Pending Approvals: ${data.pendingApprovals.length} • ${formatTimestamp(new Date())}</div>
+              `;
+              chatbox.appendChild(approvalMessage);
+              chatbox.scrollTop = chatbox.scrollHeight;
+              return;
+            }
+            
+          // Handle regular responses
+          // Detect if this is a complex multi-agent response
+          const response = data.response;
+          const hasWeatherData = /Temperature:|Condition:|Humidity:|Wind Speed:/.test(response);
+          const hasMathData = /\d+\s*[×*÷/+\-]\s*\d+\s*=/.test(response);
+          const hasSearchData = /About|Known for|History|Background/.test(response);
+          
+          let agentCount = [hasWeatherData, hasMathData, hasSearchData].filter(Boolean).length;
+          let displayName = data.agent;
+          let agentClass = getAgentClass(data.agent);
+          
+          if (agentCount > 1) {
+            displayName = "🧭 Multi-Agent Response";
+            agentClass = "orchestrator";
+          }
+          
+          // Add agent response
+          const agentMessage = document.createElement("div");
+          agentMessage.className = `message agent-message ${agentClass}`;
+          agentMessage.innerHTML = `
+            <b>${agentCount > 1 ? displayName : getAgentEmoji(data.agent) + ' ' + data.agent}:</b>
+            <div class="agent-response">${formatResponse(data.response)}</div>
+            <div class="timestamp">Session: ${data.sessionId.substring(0, 8)}... • ${agentCount > 1 ? 'Multi-Agent Query' : 'Agent: ' + data.agent} • Messages: ${data.conversationLength} • ${formatTimestamp(new Date())}</div>
+          `;
+          chatbox.appendChild(agentMessage);
+          } else {
+            // Add error message
+            const errorMessage = document.createElement("div");
+            errorMessage.className = "message agent-message error";
+            errorMessage.innerHTML = `
+              <b>❌ Error:</b>
+              <div class="agent-response">${data.error || data.message || 'Unknown error occurred'}</div>
+              <div class="timestamp">Session: ${data.sessionId || sessionId} • ${formatTimestamp(new Date())}</div>
+            `;
+            chatbox.appendChild(errorMessage);
+          }
+        }
+        
+      } catch (error) {
+        document.getElementById("loading").remove();
+        
+        const errorMessage = document.createElement("div");
+        errorMessage.className = "message agent-message error";
+        errorMessage.innerHTML = `
+          <b>❌ Connection Error:</b>
+          <div class="agent-response">${error.message}</div>
+          <div class="timestamp">Session: ${sessionId.substring(0, 8)}... • ${formatTimestamp(new Date())}</div>
+        `;
+        chatbox.appendChild(errorMessage);
+      }
+
+      // Re-enable input and button
+      inputEl.disabled = false;
+      sendBtn.disabled = false;
+      inputEl.value = "";
+      inputEl.focus();
+      chatbox.scrollTop = chatbox.scrollHeight;
+    }
+
+    // Send on Enter
+    document.getElementById("userInput").addEventListener("keydown", function (e) {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+
+    // Focus on input when page loads
+    document.getElementById("userInput").focus();
+  </script>
+</body>
+</html>

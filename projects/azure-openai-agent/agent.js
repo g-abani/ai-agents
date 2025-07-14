@@ -3,8 +3,9 @@ import { Agent, Runner, setDefaultOpenAIClient, OpenAIChatCompletionsModel, tool
 import { AzureOpenAI } from "openai";
 import { z } from "zod";
 import dotenv from 'dotenv';
+import { RECOMMENDED_PROMPT_PREFIX } from '@openai/agents-core/extensions';
 dotenv.config();
-
+console.log(RECOMMENDED_PROMPT_PREFIX);
 const {
     AZURE_OPENAI_API_KEY,
     AZURE_OPENAI_ENDPOINT,
