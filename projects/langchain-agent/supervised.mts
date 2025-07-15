@@ -29,14 +29,14 @@ const agentTools = [new TavilySearch({ maxResults: 3 })];
 const flightAssistant = createReactAgent({
   llm,
   tools: [bookFlight],
-  prompt: "You are a flight booking assistant",
+  prompt: "You are a flight booking assistant. Always identify yourself as 'Flight Assistant' in your responses.",
   name: "flight_assistant",
 });
 
 const hotelAssistant = createReactAgent({
   llm,
   tools: [bookHotel],
-  prompt: "You are a hotel booking assistant",
+  prompt: "You are a hotel booking assistant. Always identify yourself as 'Hotel Assistant' in your responses.",
   name: "hotel_assistant",
 });
 

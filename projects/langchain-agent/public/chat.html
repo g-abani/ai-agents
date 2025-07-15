@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Multi-Agent Chat</title>
+  <title>LangGraph Supervisor Chat</title>
   <style>
     body { 
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
@@ -56,6 +56,26 @@
       background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%);
       margin-right: 20px;
       line-height: 1.6;
+      border-left: 4px solid #9c27b0;
+    }
+    
+    .agent-message.flight-assistant {
+      background: linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%);
+      border-left: 4px solid #4caf50;
+    }
+    
+    .agent-message.hotel-assistant {
+      background: linear-gradient(135deg, #fff3e0 0%, #ffcc80 100%);
+      border-left: 4px solid #ff9800;
+    }
+    
+    .agent-message.search-assistant {
+      background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+      border-left: 4px solid #2196f3;
+    }
+    
+    .agent-message.supervisor {
+      background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%);
       border-left: 4px solid #9c27b0;
     }
     
@@ -179,7 +199,7 @@
 </head>
 <body>
   <div class="container">
-    <h1>Multi-Agent Chat</h1>
+    <h1>LangGraph Supervisor Chat</h1>
     <div id="chatbox"></div>
     <div class="input-container">
       <input type="text" id="userInput" placeholder="Type a message..." />
@@ -193,6 +213,16 @@
     
     function formatTimestamp(timestamp) {
       return new Date(timestamp).toLocaleTimeString();
+    }
+    
+    function getAgentDescription(agentName) {
+      const descriptions = {
+        'Flight Assistant': '✈️ Handles flight bookings',
+        'Hotel Assistant': '🏨 Manages hotel reservations',
+        'Search Assistant': '🔍 Searches for information',
+        'Supervisor': '🎯 Coordinates all agents'
+      };
+      return descriptions[agentName] || '';
     }
 
     function formatResponse(text) {
@@ -262,11 +292,24 @@
         // Remove loading
         document.getElementById("loading").remove();
         
-        // Add agent response
+        // Add agent response with agent name
         const agentMessage = document.createElement("div");
-        agentMessage.className = "message agent-message";
+        const agentName = data.agentName || 'Agent';
+        
+        // Apply specific CSS class based on agent name
+        let agentClass = 'supervisor';
+        if (agentName === 'Flight Assistant') {
+          agentClass = 'flight-assistant';
+        } else if (agentName === 'Hotel Assistant') {
+          agentClass = 'hotel-assistant';
+        } else if (agentName === 'Search Assistant') {
+          agentClass = 'search-assistant';
+        }
+        
+        agentMessage.className = `message agent-message ${agentClass}`;
+        const agentDescription = getAgentDescription(agentName);
         agentMessage.innerHTML = `
-          <b>Agent:</b>
+          <b>${agentName}:</b> <small style="color: #666;">${agentDescription}</small>
           <div class="agent-response">${formatResponse(data.response)}</div>
           <div class="timestamp">Thread: ${data.threadId.substring(0, 8)}... • ${formatTimestamp(data.timestamp)}</div>
         `;
