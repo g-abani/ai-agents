@@ -9,12 +9,53 @@ import { supervisorAgent } from "./supervised.mts";
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Store active SSE connections
+const sseConnections = new Map();
+
 // Middleware
 app.use(express.static("public"));
 app.use(cors());
 app.use(express.json());
 
-// Chat endpoint
+// SSE endpoint for real-time flow visualization
+app.get('/api/flow/:threadId', (req, res) => {
+  const threadId = req.params.threadId;
+  
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Cache-Control'
+  });
+
+  // Store this connection
+  sseConnections.set(threadId, res);
+  
+  // Send initial connection event
+  res.write(`data: ${JSON.stringify({
+    type: 'connected',
+    timestamp: new Date().toISOString()
+  })}\n\n`);
+
+  // Clean up on disconnect
+  req.on('close', () => {
+    sseConnections.delete(threadId);
+  });
+});
+
+// Function to send SSE events
+function sendFlowEvent(threadId, event) {
+  const connection = sseConnections.get(threadId);
+  if (connection) {
+    connection.write(`data: ${JSON.stringify({
+      ...event,
+      timestamp: new Date().toISOString()
+    })}\n\n`);
+  }
+}
+
+// Enhanced chat endpoint with flow visualization
 app.post('/api/chat', async (req, res) => {
   try {
     const { message, threadId = 'default' } = req.body;
@@ -23,10 +64,56 @@ app.post('/api/chat', async (req, res) => {
       return res.status(400).json({ error: 'Message is required' });
     }
 
+    // Send initial flow event
+    sendFlowEvent(threadId, {
+      type: 'request_start',
+      message: message,
+      agent: 'supervisor'
+    });
+
+    // Create a custom stream to capture execution events
+    const executionEvents = [];
+    
+    // Patch console.log to capture LangGraph internal logs
+    const originalLog = console.log;
+    console.log = (...args) => {
+      const logMessage = args.join(' ');
+      
+      // Capture tool calls
+      if (logMessage.includes('Tool calls found:')) {
+        const toolCalls = logMessage.match(/\[(.*?)\]/)?.[1]?.split(', ') || [];
+        toolCalls.forEach(toolCall => {
+          const cleanTool = toolCall.replace(/['"]/g, '');
+          sendFlowEvent(threadId, {
+            type: 'tool_call',
+            tool: cleanTool,
+            agent: getAgentFromTool(cleanTool)
+          });
+        });
+      }
+      
+      // Capture agent responses
+      if (logMessage.includes('Agent responses found:')) {
+        const agents = logMessage.match(/\[(.*?)\]/)?.[1]?.split(', ') || [];
+        agents.forEach(agent => {
+          const cleanAgent = agent.replace(/['"]/g, '');
+          sendFlowEvent(threadId, {
+            type: 'agent_response',
+            agent: mapAgentName(cleanAgent)
+          });
+        });
+      }
+      
+      originalLog(...args);
+    };
+
     const agentFinalState = await supervisorAgent.invoke(
       { messages: [new HumanMessage(message)] },
       { configurable: { thread_id: threadId } }
     );
+    
+    // Restore console.log
+    console.log = originalLog;
     
     console.log('All messages:', agentFinalState.messages);
     
@@ -98,15 +185,28 @@ app.post('/api/chat', async (req, res) => {
       };
       return agentNameMap[internalName] || internalName;
     };
+
+    // Function to get agent from tool name
+    function getAgentFromTool(toolName) {
+      if (toolName.includes('flight')) return 'Flight Assistant';
+      if (toolName.includes('hotel')) return 'Hotel Assistant';
+      if (toolName.includes('search') || toolName.includes('tavily')) return 'Search Assistant';
+      return 'Supervisor';
+    }
     
     // Process messages to extract agent information
     const processedMessages = agentFinalState.messages
       .filter(msg => msg.content && msg.content.trim() !== '') // Filter out empty messages
-      .map(msg => {
+      .map((msg, index) => {
         let agentName = 'Supervisor';
         
-        // Check if this is a user message
+        // Send flow events for each message
         if (msg.constructor.name === 'HumanMessage') {
+          sendFlowEvent(threadId, {
+            type: 'user_message',
+            message: msg.content,
+            step: index
+          });
           return {
             content: msg.content,
             agentName: 'User',
@@ -126,10 +226,30 @@ app.post('/api/chat', async (req, res) => {
             } else if (toolNames.includes('tavily_search')) {
               agentName = 'Search Assistant';
             }
+            
+            // Send tool call events
+            msg.tool_calls.forEach(tc => {
+              sendFlowEvent(threadId, {
+                type: 'tool_execution',
+                tool: tc.name,
+                agent: getAgentFromTool(tc.name),
+                step: index
+              });
+            });
           }
           // Try to determine the agent based on message metadata
           else if (msg.name) {
             agentName = mapAgentName(msg.name);
+          }
+          
+          // Send agent message event
+          if (msg.content) {
+            sendFlowEvent(threadId, {
+              type: 'agent_message',
+              agent: agentName,
+              message: msg.content.substring(0, 100),
+              step: index
+            });
           }
           
           return {
@@ -149,6 +269,14 @@ app.post('/api/chat', async (req, res) => {
           } else if (msg.name === 'tavily_search') {
             agentName = 'Search Assistant';
           }
+          
+          sendFlowEvent(threadId, {
+            type: 'tool_result',
+            tool: msg.name,
+            agent: agentName,
+            result: msg.content.substring(0, 100),
+            step: index
+          });
           
           return {
             content: msg.content,
@@ -173,6 +301,13 @@ app.post('/api/chat', async (req, res) => {
     
     console.log('Primary agent determined:', primaryAgent);
     
+    // Send completion event
+    sendFlowEvent(threadId, {
+      type: 'request_complete',
+      agent: primaryAgent,
+      response: finalResponse.content.substring(0, 100)
+    });
+    
     res.json({ 
       response: finalResponse.content,
       agentName: primaryAgent,
@@ -183,6 +318,10 @@ app.post('/api/chat', async (req, res) => {
     
   } catch (error) {
     console.error('Chat error:', error);
+    sendFlowEvent(req.body.threadId, {
+      type: 'error',
+      error: error.message
+    });
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -197,4 +336,5 @@ app.listen(PORT, () => {
   console.log(`Chat server running on port ${PORT}`);
   console.log(`Health check: http://localhost:${PORT}/api/health`);
   console.log(`Chat endpoint: POST http://localhost:${PORT}/api/chat`);
+  console.log(`Flow visualization: GET http://localhost:${PORT}/api/flow/:threadId`);
 }); 

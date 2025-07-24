@@ -2,46 +2,121 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>LangGraph Supervisor Chat</title>
+  <title>LangGraph Supervisor Flow Visualization</title>
+  <script src="https://unpkg.com/vis-network@latest/dist/vis-network.min.js"></script>
   <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
     body { 
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-      padding: 2em; 
       background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-      margin: 0;
-      min-height: 100vh;
+      height: 100vh;
+      overflow: hidden;
     }
     
     .container {
-      max-width: 800px;
-      margin: 0 auto;
+      display: flex;
+      height: 100vh;
+      gap: 1rem;
+      padding: 1rem;
+    }
+    
+    .chat-section {
+      flex: 1;
+      max-width: 45%;
       background: white;
       border-radius: 10px;
       box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-      padding: 2em;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
     }
     
-    h1 {
+    .visualization-section {
+      flex: 1;
+      max-width: 55%;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .section-title {
       text-align: center;
       color: #333;
-      margin-bottom: 1em;
+      margin-bottom: 1rem;
+      font-size: 1.5rem;
+      font-weight: 600;
     }
     
     #chatbox { 
-      width: 100%; 
-      height: 400px; 
+      flex: 1;
       overflow-y: auto; 
       border: 1px solid #ddd; 
-      padding: 1em; 
-      margin-bottom: 1em; 
+      padding: 1rem; 
+      margin-bottom: 1rem; 
       background: #f9f9f9;
       border-radius: 8px;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      min-height: 0;
+    }
+    
+    #flow-visualization {
+      flex: 1;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      background: #fafafa;
+      min-height: 0;
+    }
+    
+    .flow-controls {
+      margin-bottom: 1rem;
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+    
+    .flow-status {
+      padding: 0.5rem 1rem;
+      border-radius: 20px;
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+    
+    .flow-status.idle {
+      background: #e3f2fd;
+      color: #1976d2;
+    }
+    
+    .flow-status.processing {
+      background: #fff3e0;
+      color: #f57c00;
+      animation: pulse 1.5s infinite;
+    }
+    
+    .flow-status.complete {
+      background: #e8f5e8;
+      color: #2e7d32;
+    }
+    
+    .flow-status.error {
+      background: #ffebee;
+      color: #c62828;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
     }
     
     .message {
-      margin-bottom: 1em;
-      padding: 1em;
+      margin-bottom: 1rem;
+      padding: 1rem;
       border-radius: 8px;
       box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
@@ -82,41 +157,7 @@
     .agent-response {
       white-space: pre-wrap;
       word-wrap: break-word;
-      margin: 0.5em 0;
-    }
-    
-    .agent-response h1, .agent-response h2, .agent-response h3 {
-      color: #333;
-      margin-top: 1em;
-      margin-bottom: 0.5em;
-    }
-    
-    .agent-response ul, .agent-response ol {
-      margin: 0.5em 0;
-      padding-left: 1.5em;
-    }
-    
-    .agent-response li {
-      margin-bottom: 0.3em;
-    }
-    
-    .agent-response p {
-      margin-bottom: 0.8em;
-    }
-    
-    .agent-response code {
-      background: #f1f1f1;
-      padding: 2px 4px;
-      border-radius: 3px;
-      font-family: 'Courier New', monospace;
-    }
-    
-    .agent-response pre {
-      background: #f1f1f1;
-      padding: 1em;
-      border-radius: 5px;
-      overflow-x: auto;
-      margin: 0.5em 0;
+      margin: 0.5rem 0;
     }
     
     .input-container {
@@ -127,8 +168,8 @@
     
     input { 
       flex: 1;
-      padding: 0.8em; 
-      font-size: 1em; 
+      padding: 0.8rem; 
+      font-size: 1rem; 
       border: 1px solid #ddd;
       border-radius: 5px;
       outline: none;
@@ -140,8 +181,8 @@
     }
     
     button { 
-      padding: 0.8em 1.5em; 
-      font-size: 1em; 
+      padding: 0.8rem 1.5rem; 
+      font-size: 1rem; 
       background: #007bff;
       color: white;
       border: none;
@@ -165,7 +206,7 @@
       gap: 10px;
       color: #666;
       font-style: italic;
-      margin: 0.5em 0;
+      margin: 0.5rem 0;
     }
     
     .loading-gif {
@@ -185,9 +226,9 @@
     .error {
       color: #dc3545;
       background: #f8d7da;
-      padding: 0.5em;
+      padding: 0.5rem;
       border-radius: 5px;
-      margin: 0.5em 0;
+      margin: 0.5rem 0;
     }
     
     .timestamp {
@@ -195,15 +236,84 @@
       color: #666;
       margin-top: 0.3em;
     }
+    
+    .clear-button {
+      background: #6c757d;
+      padding: 0.5rem 1rem;
+      font-size: 0.9rem;
+    }
+    
+    .clear-button:hover {
+      background: #545b62;
+    }
+
+    .flow-legend {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+      font-size: 0.8rem;
+    }
+    
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+    
+    .legend-color {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>LangGraph Supervisor Chat</h1>
-    <div id="chatbox"></div>
-    <div class="input-container">
-      <input type="text" id="userInput" placeholder="Type a message..." />
-      <button id="sendBtn" onclick="sendMessage()">Send</button>
+          <!-- Chat Section -->
+      <div class="chat-section">
+        <h1 class="section-title">💬 LangGraph Supervisor Chat</h1>
+      <div id="chatbox"></div>
+      <div class="input-container">
+        <input type="text" id="userInput" placeholder="Type a message..." />
+        <button id="sendBtn" onclick="sendMessage()">Send</button>
+      </div>
+    </div>
+    
+    <!-- Visualization Section -->
+    <div class="visualization-section">
+      <h1 class="section-title">🔄 Execution Flow</h1>
+      <div class="flow-controls">
+        <div id="flowStatus" class="flow-status idle">Idle</div>
+        <button class="clear-button" onclick="clearVisualization()">Clear</button>
+      </div>
+      <div class="flow-legend">
+        <div class="legend-item">
+          <div class="legend-color" style="background: #2196f3;"></div>
+          <span>User</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background: #e91e63;"></div>
+          <span>Supervisor</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background: #4caf50;"></div>
+          <span>Flight Assistant</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background: #ff9800;"></div>
+          <span>Hotel Assistant</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background: #9c27b0;"></div>
+          <span>Search Assistant</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background: #607d8b;"></div>
+          <span>Tools</span>
+        </div>
+      </div>
+      <div id="flow-visualization"></div>
     </div>
   </div>
 
@@ -211,6 +321,319 @@
     // Generate a unique session ID for this chat session
     const sessionId = 'session-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
     
+    // Flow visualization
+    let network = null;
+    let nodes = new vis.DataSet();
+    let edges = new vis.DataSet();
+    let eventSource = null;
+    let stepCounter = 0;
+    let activeEdges = new Set();
+    let currentRequestId = null;
+    
+    // Initialize the flow visualization
+    function initFlowVisualization() {
+      const container = document.getElementById('flow-visualization');
+      
+      // Initial nodes with better spacing and distinct colors
+      const initialNodes = [
+        { id: 'user', label: 'User', color: '#2196f3', x: -200, y: 0, fixed: true },
+        { id: 'supervisor', label: 'Supervisor', color: '#e91e63', x: 0, y: 0, fixed: true },
+        { id: 'flight_assistant', label: 'Flight\nAssistant', color: '#4caf50', x: 200, y: -160, fixed: true },
+        { id: 'search_assistant', label: 'Search\nAssistant', color: '#9c27b0', x: 200, y: 0, fixed: true },
+        { id: 'hotel_assistant', label: 'Hotel\nAssistant', color: '#ff9800', x: 200, y: 160, fixed: true },
+        { id: 'tools', label: 'Tools', color: '#607d8b', x: 400, y: 0, fixed: true }
+      ];
+      
+      nodes.clear();
+      edges.clear();
+      nodes.add(initialNodes);
+      
+      const data = { nodes: nodes, edges: edges };
+      const options = {
+        nodes: {
+          shape: 'dot',
+          size: 30,
+          font: { 
+            size: 14, 
+            color: 'white',
+            face: 'Arial',
+            strokeWidth: 3,
+            strokeColor: '#000000'
+          },
+          borderWidth: 3,
+          borderColor: '#ffffff',
+          shadow: {
+            enabled: true,
+            color: 'rgba(0,0,0,0.3)',
+            size: 10,
+            x: 2,
+            y: 2
+          }
+        },
+        edges: {
+          arrows: { 
+            to: { 
+              enabled: true, 
+              scaleFactor: 1.2
+            } 
+          },
+          color: { 
+            color: '#666666', 
+            highlight: '#ff0000',
+            inherit: false
+          },
+          width: 2,
+          smooth: { type: 'cubicBezier', forceDirection: 'horizontal' },
+          shadow: {
+            enabled: true,
+            color: 'rgba(0,0,0,0.2)',
+            size: 5,
+            x: 1,
+            y: 1
+          }
+        },
+        physics: {
+          enabled: false
+        },
+        interaction: {
+          dragNodes: false,
+          dragView: true,
+          zoomView: true
+        }
+      };
+      
+      network = new vis.Network(container, data, options);
+    }
+    
+    // Connect to SSE for flow events
+    function connectToFlowEvents() {
+      if (eventSource) {
+        eventSource.close();
+      }
+      
+      eventSource = new EventSource(`/api/flow/${sessionId}`);
+      
+      eventSource.onmessage = function(event) {
+        const data = JSON.parse(event.data);
+        handleFlowEvent(data);
+      };
+      
+      eventSource.onerror = function(error) {
+        console.error('SSE Error:', error);
+        updateFlowStatus('error', 'Connection Error');
+      };
+    }
+    
+    // Handle flow events
+    function handleFlowEvent(event) {
+      console.log('Flow event:', event);
+      
+      switch (event.type) {
+        case 'connected':
+          updateFlowStatus('idle', 'Connected');
+          break;
+          
+        case 'request_start':
+          updateFlowStatus('processing', 'Processing Request');
+          // Clear previous request flows
+          clearActiveEdges();
+          stepCounter = 0;
+          currentRequestId = Date.now();
+          animateFlow('user', 'supervisor', `Request: ${event.message.substring(0, 30)}...`);
+          break;
+          
+        case 'tool_call':
+          animateFlow('supervisor', getNodeId(event.agent), `Tool: ${event.tool}`);
+          break;
+          
+        case 'tool_execution':
+          animateFlow(getNodeId(event.agent), 'tools', `Execute: ${event.tool}`);
+          break;
+          
+        case 'tool_result':
+          animateFlow('tools', getNodeId(event.agent), `Result: ${event.result.substring(0, 20)}...`);
+          break;
+          
+        case 'agent_response':
+          animateFlow('supervisor', getNodeId(event.agent), 'Transfer');
+          break;
+          
+        case 'agent_message':
+          animateFlow(getNodeId(event.agent), 'supervisor', `Response: ${event.message.substring(0, 20)}...`);
+          break;
+          
+        case 'request_complete':
+          updateFlowStatus('complete', `Completed by ${event.agent}`);
+          animateFlow('supervisor', 'user', `Final: ${event.response.substring(0, 30)}...`);
+          break;
+          
+        case 'error':
+          updateFlowStatus('error', `Error: ${event.error}`);
+          break;
+      }
+    }
+    
+    // Get node ID from agent name
+    function getNodeId(agentName) {
+      const mapping = {
+        'Flight Assistant': 'flight_assistant',
+        'Hotel Assistant': 'hotel_assistant',
+        'Search Assistant': 'search_assistant',
+        'Supervisor': 'supervisor',
+        'User': 'user'
+      };
+      return mapping[agentName] || 'supervisor';
+    }
+    
+    // Get color for target node/agent
+    function getNodeColor(nodeId) {
+      const colorMapping = {
+        'user': '#2196f3',
+        'supervisor': '#e91e63',
+        'flight_assistant': '#4caf50',
+        'search_assistant': '#9c27b0',
+        'hotel_assistant': '#ff9800',
+        'tools': '#607d8b'
+      };
+      return colorMapping[nodeId] || '#666666';
+    }
+    
+    // Animate flow between nodes
+    function animateFlow(fromId, toId, label) {
+      stepCounter++;
+      const edgeId = `edge_${stepCounter}_${currentRequestId}`;
+      
+      // Get target color for the arrow
+      const targetColor = getNodeColor(toId);
+      const shadowColor = targetColor + '66'; // Add transparency
+      
+      // Add persistent edge with target agent's color
+      edges.add({
+        id: edgeId,
+        from: fromId,
+        to: toId,
+        label: label,
+        color: { 
+          color: targetColor, 
+          highlight: targetColor,
+          inherit: false
+        },
+        width: 2,
+        arrows: {
+          to: { 
+            enabled: true, 
+            scaleFactor: 1.2,
+            color: targetColor
+          }
+        },
+        font: { 
+          size: 11, 
+          background: 'rgba(255,255,255,0.9)', 
+          strokeWidth: 2, 
+          strokeColor: 'white',
+          color: '#333333'
+        },
+        shadow: {
+          enabled: true,
+          color: shadowColor,
+          size: 6,
+          x: 2,
+          y: 2
+        }
+      });
+      
+      // Track this edge as active
+      activeEdges.add(edgeId);
+      
+      // Briefly highlight nodes with pulsing effect using target color
+      const originalFromNode = nodes.get(fromId);
+      const originalToNode = nodes.get(toId);
+      
+      // Add pulsing border with target agent's color
+      nodes.update([
+        { 
+          id: fromId, 
+          borderWidth: 6,
+          borderColor: targetColor,
+          shadow: {
+            enabled: true,
+            color: shadowColor,
+            size: 15,
+            x: 0,
+            y: 0
+          }
+        },
+        { 
+          id: toId, 
+          borderWidth: 6,
+          borderColor: targetColor,
+          shadow: {
+            enabled: true,
+            color: shadowColor,
+            size: 15,
+            x: 0,
+            y: 0
+          }
+        }
+      ]);
+      
+      // Remove node highlighting after 1 second but keep the edge
+      setTimeout(() => {
+        nodes.update([
+          { 
+            id: fromId, 
+            borderWidth: 3,
+            borderColor: '#ffffff',
+            shadow: {
+              enabled: true,
+              color: 'rgba(0,0,0,0.3)',
+              size: 10,
+              x: 2,
+              y: 2
+            }
+          },
+          { 
+            id: toId, 
+            borderWidth: 3,
+            borderColor: '#ffffff',
+            shadow: {
+              enabled: true,
+              color: 'rgba(0,0,0,0.3)',
+              size: 10,
+              x: 2,
+              y: 2
+            }
+          }
+        ]);
+      }, 1000);
+    }
+    
+    // Clear all active edges from current request
+    function clearActiveEdges() {
+      activeEdges.forEach(edgeId => {
+        if (edges.get(edgeId)) {
+          edges.remove(edgeId);
+        }
+      });
+      activeEdges.clear();
+    }
+    
+    // Update flow status
+    function updateFlowStatus(status, message) {
+      const statusEl = document.getElementById('flowStatus');
+      statusEl.className = `flow-status ${status}`;
+      statusEl.textContent = message;
+    }
+    
+    // Clear visualization
+    function clearVisualization() {
+      clearActiveEdges();
+      stepCounter = 0;
+      currentRequestId = null;
+      updateFlowStatus('idle', 'Idle');
+    }
+    
+    // Chat functions
     function formatTimestamp(timestamp) {
       return new Date(timestamp).toLocaleTimeString();
     }
@@ -226,25 +649,12 @@
     }
 
     function formatResponse(text) {
-      // Clean up the text and add proper formatting
       let formatted = text;
-      
-      // Only add line breaks after sentences that end with a period followed by a capital letter
-      // and are longer than 50 characters (to avoid breaking short sentences)
       formatted = formatted.replace(/(\. )([A-Z][^.]{50,})/g, '.\n\n$2');
-      
-      // Format numbered lists (only at the beginning of obvious list items)
       formatted = formatted.replace(/(\s)(\d+\.\s[A-Z])/g, '$1\n$2');
-      
-      // Add line breaks before major sections that start with numbers and colons
       formatted = formatted.replace(/(\s)(\d+\.\s[A-Z][^:]*:)/g, '$1\n\n$2');
-      
-      // Clean up multiple consecutive newlines
       formatted = formatted.replace(/\n{3,}/g, '\n\n');
-      
-      // Trim whitespace
       formatted = formatted.trim();
-      
       return formatted;
     }
 
@@ -268,7 +678,7 @@
       loadingEl.id = "loading";
       loadingEl.innerHTML = `
         <div class="loading-gif"></div>
-        <span>Agent is typing...</span>
+        <span>Agent is processing...</span>
       `;
       chatbox.appendChild(loadingEl);
       chatbox.scrollTop = chatbox.scrollHeight;
@@ -340,8 +750,19 @@
       }
     });
 
-    // Focus on input when page loads
-    document.getElementById("userInput").focus();
+    // Initialize everything when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+      initFlowVisualization();
+      connectToFlowEvents();
+      document.getElementById("userInput").focus();
+    });
+
+    // Clean up on page unload
+    window.addEventListener('beforeunload', function() {
+      if (eventSource) {
+        eventSource.close();
+      }
+    });
   </script>
 </body>
 </html>

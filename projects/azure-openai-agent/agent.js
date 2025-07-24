@@ -1,5 +1,5 @@
 // index.js
-import { Agent, Runner, setDefaultOpenAIClient, OpenAIChatCompletionsModel, tool } from "@openai/agents";
+import { Agent, Runner, MCPServerStdio, setDefaultOpenAIClient, OpenAIChatCompletionsModel, tool } from "@openai/agents";
 import { AzureOpenAI } from "openai";
 import { z } from "zod";
 import dotenv from 'dotenv';
@@ -18,6 +18,13 @@ if (!AZURE_OPENAI_API_KEY || !AZURE_OPENAI_ENDPOINT || !AZURE_OPENAI_DEPLOYMENT_
     process.exit(1);
 }
 
+const mcpServer = new MCPServerStdio({
+    command: "node",
+    // Replace with absolute path to your math_server.py file
+    args: ["/Users/abani/code/ai-agents/projects/mcp-server/build/index.js"],
+    transport: "stdio",
+ });
+
 // 1. Initialize Azure OpenAI Client
 
 const client = new AzureOpenAI({
@@ -26,6 +33,8 @@ const client = new AzureOpenAI({
     apiVersion: AZURE_OPENAI_API_VERSION,
     deployment: AZURE_OPENAI_DEPLOYMENT_NAME,
 });
+
+await mcpServer.connect();
 
 setDefaultOpenAIClient(client);
 const modelName = "gpt-4o-mini";
@@ -62,6 +71,7 @@ const agent = Agent.create({
     // Uncomment the line below for verbose logging to see agent's thought process
     // verbose: true,
     model: new OpenAIChatCompletionsModel(client, modelName),
+    mcpServers: [mcpServer],
 });
 
 // 4. Run the Agent
@@ -70,13 +80,13 @@ async function runAgent() {
     const runner = new Runner();
     const result = await runner.run(
         agent,
-        'How is the weather in Tokyo?',
+        'What is the sum of 4 + 49? and greet Abani',
     );
-    console.log("\nAgent Response for 'How is the weather in Tokyo?':");
+    console.log("\nAgent Response ':");
     console.log(result.finalOutput);
-    // Example 2: A general question that doesn't require a tool
+    await mcpServer.close();
 }
-
+//await mcpServer.close();
 // Execute the agent
 runAgent().catch(console.error);
 
